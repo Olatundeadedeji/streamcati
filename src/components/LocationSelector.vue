@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { nigerianStates } from '../constants/states'
 
-const props = defineProps({
+defineProps({
   modelValue: {
     type: String,
     default: ''

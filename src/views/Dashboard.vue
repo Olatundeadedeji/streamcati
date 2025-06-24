@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useContactsStore } from '../stores/contacts'
 import { useInterviewStore } from '../stores/interview'
-import { useAuthStore } from '../stores/auth'
 import { useToast } from '../composables/useToast'
-import { importDataFromJson } from '../utils/dataImporter'
 
 const contactsStore = useContactsStore()
 const interviewStore = useInterviewStore()
-const authStore = useAuthStore()
 const { showToast } = useToast()
 
 const isLoading = ref(true)
@@ -69,33 +66,7 @@ const updateStats = () => {
   }
 }
 
-const statusDistribution = computed(() => [
-  { status: 'Round 1', count: stats.value.activeInterviews, color: 'bg-green-500' },
-  { status: 'Round 2', count: contactsStore.contacts.filter(c => c.status === '1').length, color: 'bg-yellow-500' },
-  { status: 'Round 3', count: stats.value.completedInterviews, color: 'bg-blue-500' },
-  { status: 'Round 4', count: contactsStore.contacts.filter(c => c.status === '4').length, color: 'bg-gray-500' },
-])
 
-const generateReport = () => {
-  showToast('Generating report...', 'info')
-  // In a real app, this would trigger a report generation
-  setTimeout(() => {
-    showToast('Report generated successfully', 'success')
-  }, 2000)
-}
-
-const getActivityIcon = (type: unknown) => {
-  switch (type) {
-    case 'interview_completed':
-      return 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
-    case 'interview_started':
-      return 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
-    case 'contact_added':
-      return 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z'
-    default:
-      return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
-  }
-}
 
 const importData = async () => {
   try {

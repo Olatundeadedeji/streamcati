@@ -41,13 +41,7 @@ const closeContactForm = () => {
   selectedContact.value = null
 }
 
-const confirmDelete = (contactId: number) => {
-  confirmDeleteId.value = contactId
-}
 
-const cancelDelete = () => {
-  confirmDeleteId.value = null
-}
 
 const deleteContact = async (contactId: number) => {
   try {

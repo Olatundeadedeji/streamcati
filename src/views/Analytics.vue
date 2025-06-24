@@ -135,7 +135,7 @@ const calculateAverageCompletionTime = (_interviews: any[]) => {
   return mockData[timeFrame.value] || 0
 }
 
-const getMostCommonResponses = (interviews: any[]) => {
+const getMostCommonResponses = (_interviews: any[]) => {
   // This would be a real calculation in a production app
   // For now, return mock data
   return [
@@ -145,7 +145,7 @@ const getMostCommonResponses = (interviews: any[]) => {
   ]
 }
 
-const getResponseRateByDay = (interviews: any[]) => {
+const getResponseRateByDay = (_interviews: any[]) => {
   // This would calculate response rates by day of week
   // For now, return mock data
   return {

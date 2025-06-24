@@ -6,15 +6,12 @@ import { useAuthStore } from '../stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 const isSidebarOpen = ref(true)
-const isUserMenuOpen = ref(false)
 
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value
 }
 
-const toggleUserMenu = () => {
-  isUserMenuOpen.value = !isUserMenuOpen.value
-}
+
 
 const logout = async () => {
   await authStore.logout()

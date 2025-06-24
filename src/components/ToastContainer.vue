@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import { useToast } from '../composables/useToast'
-import { TransitionGroup } from 'vue'
 
 const { toasts, removeToast } = useToast()
-
-
-interface Toast {
-  id: string | number
-  message: string
-  type: ToastType
-}
 
 type ToastType = 'success' | 'error' | 'warning' | string
 

@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useInterviewStore } from '../stores/interview'
+import { useInterviewStore, type Interview } from '../stores/interview'
 import { useContactsStore } from '../stores/contacts'
 import { useToast } from '../composables/useToast'
-import { importDataFromJson } from '../utils/dataImporter'
 
 const router = useRouter()
 const interviewStore = useInterviewStore()
@@ -42,24 +41,28 @@ const filteredInterviews = computed(() => {
 
   // Apply round filter
   if (roundFilter.value) {
-    result = result.filter(interview => interview.round === roundFilter.value)
+    result = result.filter(interview => interview.interview_round.round_number === roundFilter.value)
   }
 
   // Apply search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(interview => {
-      const contact = contactsStore.getContactById(interview.contact_id)
-      return contact && contact.name.toLowerCase().includes(query)
+      // Use embedded contact data if available, otherwise fall back to contact_id lookup
+      const contactName = interview.contact?.name || 'Unknown Contact'
+      return contactName.toLowerCase().includes(query)
     })
   }
 
   return result
 })
 
-const getContactName = (contactId: number | string) => {
-  const contact = contactsStore.getContactById(Number(contactId))
-  return contact ? contact.name : 'Unknown Contact'
+const getContactName = (interview: Interview) => {
+  // Use embedded contact data if available
+  if (interview.contact?.name) {
+    return interview.contact.name
+  }
+  return 'Unknown Contact'
 }
 
 const formatDate = (dateString: string | undefined) => {
@@ -110,56 +113,35 @@ const startNewInterview = (contactId: number | string, round: number = 1) => {
   router.push(`/interview/${contactId}?round=${round}`)
 }
 
-interface Interview {
-  id: number
-  contact_id: number
-  status: string
-  round: number
-  stage: number
-  started_at?: string
-  completed_at?: string
-  next_round_due_date?: string
-}
+
 
 const isDueForInterview = (interview: Interview) => {
-  if (!interview.next_round_due_date) return false
-  
-  const dueDate = new Date(interview.next_round_due_date)
+  if (!interview.interview_round.scheduled_at) return false
+
+  const dueDate = new Date(interview.interview_round.scheduled_at)
   const today = new Date()
-  
-  return dueDate <= today && interview.round < 4
+
+  return dueDate <= today && interview.interview_round.round_number < 4
 }
 
 const getNextRoundDueDate = (interview: Interview) => {
-  if (!interview.next_round_due_date) return 'Not scheduled'
-  
-  const dueDate = new Date(interview.next_round_due_date)
+  if (!interview.interview_round.scheduled_at) return 'Not scheduled'
+
+  const dueDate = new Date(interview.interview_round.scheduled_at)
   const today = new Date()
-  
+
   if (dueDate <= today) {
     return 'Due now'
   }
-  
+
   // Calculate days until due
   const diffTime = Math.abs(dueDate.getTime() - today.getTime())
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  
+
   return `Due in ${diffDays} days`
 }
 
-const importInterviews = async () => {
-  try {
-    isLoading.value = true
-    showToast('Importing interviews from JSON file...', 'info')
-    await interviewStore.importInterviewsFromJson()
-    showToast('Interviews imported successfully', 'success')
-  } catch (e) {
-    console.error('Failed to import interviews:', e)
-    showToast('Failed to import interviews: ' + (typeof e === 'object' && e && 'message' in e ? (e as { message: string }).message : String(e)), 'error')
-  } finally {
-    isLoading.value = false
-  }
-}
+
 </script>
 
 <template>
@@ -285,12 +267,12 @@ const importInterviews = async () => {
             <div class="flex items-center">
               <div class="flex-shrink-0">
                 <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold">
-                  {{ getContactName(interview.contact_id).charAt(0) }}
+                  {{ getContactName(interview).charAt(0) }}
                 </div>
               </div>
               <div class="ml-4">
                 <div class="text-sm font-medium text-gray-900">
-                  {{ getContactName(interview.contact_id) }}
+                  {{ getContactName(interview) }}
                 </div>
                 <div class="text-sm text-gray-500">
                   Started: {{ formatDate(interview.started_at) }}
@@ -298,7 +280,7 @@ const importInterviews = async () => {
                 <div v-if="interview.completed_at" class="text-sm text-gray-500">
                   Completed: {{ formatDate(interview.completed_at) }}
                 </div>
-                <div v-if="interview.next_round_due_date" class="text-sm text-gray-500">
+                <div v-if="interview.interview_round.scheduled_at" class="text-sm text-gray-500">
                   Next round: {{ getNextRoundDueDate(interview) }}
                 </div>
               </div>
@@ -307,8 +289,8 @@ const importInterviews = async () => {
               <span :class="[getStatusClass(interview.status), 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full mr-2']">
                 {{ interview.status.replace('_', ' ') }}
               </span>
-              <span :class="[getRoundClass(interview.round), 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full mr-4']">
-                Round {{ interview.round }}
+              <span :class="[getRoundClass(interview.interview_round.round_number), 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full mr-4']">
+                Round {{ interview.interview_round.round_number }}
               </span>
               <span class="text-sm text-gray-500 mr-4">
                 Stage {{ interview.stage }} of 4
@@ -320,15 +302,15 @@ const importInterviews = async () => {
               >
                 {{ interview.status === 'paused' ? 'Resume' : 'Continue' }}
               </button>
-              <button 
+              <button
                 v-else-if="isDueForInterview(interview)"
-                @click="startNewInterview(interview.contact_id, interview.round + 1)" 
+                @click="startNewInterview(interview.contact_id, interview.interview_round.round_number + 1)"
                 class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
               >
-                Start Round {{ interview.round + 1 }}
+                Start Round {{ interview.interview_round.round_number + 1 }}
               </button>
-              <button 
-                v-else-if="interview.round < 4"
+              <button
+                v-else-if="interview.interview_round.round_number < 4"
                 class="inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 disabled
               >

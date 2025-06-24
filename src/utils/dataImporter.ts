@@ -42,7 +42,7 @@ export async function importDataFromJson(): Promise<{
         name: item['Q1F: Name of Customer'],
         phone: item['Q1G: Phone Number of the respondent'],
         email: `${item['Q1F: Name of Customer'].toLowerCase().replace(/\s+/g, '.')}@example.com`,
-        status: 'active',
+        status: 'not_started',
         created_at: item['Q1E: Date/start time of the call'],
         last_contact: item['Q1E: Start Time'],
         interview_count: 1
@@ -55,7 +55,6 @@ export async function importDataFromJson(): Promise<{
         status: 'completed',
         started_at: item['Q1E: Start Time'],
         completed_at: item['Q1E: Start Time'], // Assuming completed same day
-        round: parseInt(item['Q1I: Round of interview'].replace('Round ', '')),
         current_question_index: 0
       };
       

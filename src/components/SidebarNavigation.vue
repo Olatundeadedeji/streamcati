@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
-const props = defineProps({
+defineProps({
   collapsed: {
     type: Boolean,
     default: false

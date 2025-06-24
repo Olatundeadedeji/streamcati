@@ -2,16 +2,10 @@
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
-defineProps({
-  title: {
-    type: String,
-    required: true
-  },
-  toggleSidebar: {
-    type: Function,
-    required: true
-  }
-})
+defineProps<{
+  title: string
+  toggleSidebar: (event: MouseEvent) => void
+}>()
 
 const authStore = useAuthStore()
 const notificationsOpen = ref(false)
@@ -115,10 +109,9 @@ const unreadCount = notifications.filter(n => !n.read).length
           
           <!-- User profile -->
           <div class="relative">
-            <button 
+            <button
               @click="toggleUserMenu"
               class="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-full"
-              aria-expanded="false"
               :aria-expanded="userMenuOpen"
               aria-haspopup="true"
             >
