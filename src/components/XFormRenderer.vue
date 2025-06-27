@@ -75,14 +75,6 @@
         >
           Save Progress
         </button>
-        
-        <button
-          @click="() => validateForm()"
-          :disabled="submitting"
-          class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-        >
-          Validate
-        </button>
       </div>
     </div>
   </div>
@@ -258,7 +250,6 @@ onUnmounted(() => {
 
 // Expose methods for parent component
 defineExpose({
-  validateForm,
   getFormData,
   saveProgress,
   validateAndSubmit

@@ -80,10 +80,6 @@ onMounted(async () => {
   }
 })
 
-
-
-
-
 const handleNext = async () => {
   // If we're in the introduction section, move to consent
   if (currentSection.value === 'introduction') {
@@ -115,8 +111,6 @@ const handleNext = async () => {
     showToast('Failed to move to next question', 'error')
   }
 }
-
-
 
 const handlePause = async () => {
   try {
@@ -167,8 +161,6 @@ const handleXFormError = (error: any) => {
 const handleXFormLoaded = () => {
   console.log('✅ XForm loaded successfully')
 }
-
-
 
 const getRoundLabel = computed(() => {
   switch (round.value) {
