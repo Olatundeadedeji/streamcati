@@ -172,51 +172,7 @@ const importData = async () => {
       </div>
     </div>
     
-    <!-- Recent Activity -->
-    <div class="bg-white rounded-lg shadow mb-8">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-medium text-gray-900">Recent Activity</h3>
-      </div>
-      <div class="p-6">
-        <ul class="divide-y divide-gray-200">
-          <li v-for="activity in recentActivity" :key="activity.id" class="py-4">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <span class="inline-flex items-center justify-center h-10 w-10 rounded-full" 
-                      :class="{
-                        'bg-green-100': activity.type === 'interview_completed',
-                        'bg-yellow-100': activity.type === 'interview_started',
-                        'bg-blue-100': activity.type === 'contact_added'
-                      }">
-                  <svg class="h-6 w-6" 
-                       :class="{
-                         'text-green-600': activity.type === 'interview_completed',
-                         'text-yellow-600': activity.type === 'interview_started',
-                         'text-blue-600': activity.type === 'contact_added'
-                       }"
-                       fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path v-if="activity.type === 'interview_completed'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    <path v-else-if="activity.type === 'interview_started'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                  </svg>
-                </span>
-              </div>
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-900">
-                  {{ activity.contact }}
-                  <span class="text-gray-500">
-                    {{ activity.type === 'interview_completed' ? 'completed an interview' : 
-                       activity.type === 'interview_started' ? 'started an interview' : 
-                       'was added as a contact' }}
-                  </span>
-                </p>
-                <p class="text-sm text-gray-500">{{ activity.time }}</p>
-              </div>
-            </div>
-          </li>
-        </ul>
-      </div>
-    </div>
+
   </div>
 </template>
 

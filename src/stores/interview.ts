@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { apiClient } from '../services/api'
 import { importDataFromJson } from '../utils/dataImporter'
-import { useContactsStore } from './contacts'
+
 
 export interface Question {
   id: number
@@ -66,35 +66,7 @@ export const useInterviewStore = defineStore('interview', () => {
   const autoSaveEnabled = ref(true)
   const roundFilter = ref<number | null>(null)
   
-  // Get contacts store instance
-  const contactsStore = useContactsStore()
 
-  // Utility function to safely extract contact ID from interview
-  const getContactIdFromInterview = (interview: Interview | null): number | null => {
-    if (!interview) {
-      console.warn('⚠️ No interview provided to getContactIdFromInterview')
-      return null
-    }
-
-    // Try contact_id first (should be available after backend fix)
-    if (interview.contact_id && typeof interview.contact_id === 'number') {
-      console.log('✅ Found contact_id:', interview.contact_id)
-      return interview.contact_id
-    }
-
-    // Fallback to contact.id if available
-    if (interview.contact?.id && typeof interview.contact.id === 'number') {
-      console.log('✅ Using contact.id as fallback:', interview.contact.id)
-      return interview.contact.id
-    }
-
-    console.error('❌ No valid contact ID found in interview:', {
-      contact_id: interview.contact_id,
-      contact: interview.contact,
-      interview_id: interview.id
-    })
-    return null
-  }
 
   // Computed properties
   const currentStage = computed(() => currentInterview.value?.stage || 1)
@@ -164,9 +136,7 @@ export const useInterviewStore = defineStore('interview', () => {
         await fetchQuestions()
       }
       
-      // Auto-populate known contact information
-      console.log('Starting auto-population for new interview')
-      await autoPopulateContactInfo()
+
       
       setCurrentQuestion()
       return currentInterview.value
@@ -219,10 +189,7 @@ export const useInterviewStore = defineStore('interview', () => {
         throw new Error('No questions available for this interview round')
       }
 
-      // Auto-populate known contact information
-      console.log('About to call autoPopulateContactInfo')
-      await autoPopulateContactInfo()
-      console.log('Finished autoPopulateContactInfo')
+
       
       return currentInterview.value
     } catch (err: any) {
@@ -460,194 +427,9 @@ export const useInterviewStore = defineStore('interview', () => {
     return currentInterview.value?.responses.find(r => r.question_id === questionId)
   }
 
-  const autoPopulateContactInfo = async () => {
-    if (!currentInterview.value) {
-      console.log('❌ No current interview for auto-population')
-      return
-    }
 
-    try {
-      // Get contact ID using the utility function
-      const contactId = getContactIdFromInterview(currentInterview.value)
 
-      // Validate contact ID
-      if (!contactId) {
-        console.error('❌ No valid contact ID found in interview:', currentInterview.value)
-        return
-      }
 
-      console.log('🔍 Fetching contact with ID:', contactId)
-
-      // Get contact info using the contacts store
-      const contact = await contactsStore.getContactById(contactId)
-      
-      if (!contact) {
-        console.log('❌ No contact found for auto-population')
-        return
-      }
-      
-      console.log('✅ Found contact for auto-population:', contact)
-      
-      // Define field mappings with comprehensive keyword matching
-      const fieldMappings = [
-        {
-          field: 'name',
-          value: contact.name,
-          keywords: ['name', 'full name', 'contact name', 'your name', 'participant name']
-        },
-        {
-          field: 'phone',
-          value: contact.phone,
-          keywords: ['phone', 'contact number', 'telephone', 'mobile', 'phone number', 'contact info']
-        },
-        {
-          field: 'serialNumber',
-          value: contact.serialNumber,
-          keywords: ['serial number', 'serial', 'serial no', 'device serial', 'product serial']
-        },
-        {
-          field: 'cuid',
-          value: contact.cuid,
-          keywords: ['cuid', 'customer id', 'unique id', 'customer identifier', 'user id']
-        },
-        {
-          field: 'ticketNumber',
-          value: contact.ticketNumber,
-          keywords: ['ticket number', 'ticket', 'ticket no', 'reference number', 'case number']
-        },
-        {
-          field: 'location',
-          value: contact.location,
-          keywords: ['location', 'state', 'address', 'city', 'region', 'where are you located']
-        }
-      ]
-
-      // Auto-populate each field
-      for (const mapping of fieldMappings) {
-        // Skip if the contact doesn't have this field value
-        if (!mapping.value) {
-          console.log(`⏭️ Skipping ${mapping.field} - no value in contact record`)
-          continue
-        }
-
-        // Find questions that match any of the keywords for this field
-        const matchingQuestions = questions.value
-          .filter(q => {
-            const questionText = q.text.toLowerCase()
-            return mapping.keywords.some(keyword => 
-              questionText.includes(keyword.toLowerCase())
-            ) && 
-            (q.round === null || q.round === currentInterview.value?.interview_round.round_number)
-          })
-          .slice(0, 2) // Limit to first 2 matching questions to avoid over-population
-
-        console.log(`🔍 Found ${matchingQuestions.length} questions for ${mapping.field}:`, 
-          matchingQuestions.map(q => ({ id: q.id, text: q.text })))
-
-        // Auto-populate each matching question
-        for (const question of matchingQuestions) {
-          try {
-            // Check if this question already has a response
-            const existingResponse = getResponseForQuestion(question.id)
-            if (existingResponse?.answer) {
-              console.log(`⏭️ Skipping ${mapping.field} question ${question.id} - already answered`)
-              continue
-            }
-
-            console.log(`🔄 Auto-populating ${mapping.field} question:`, question.id, 'with value:', mapping.value)
-            await submitResponse(question.id, mapping.value)
-            console.log(`✅ Successfully auto-populated ${mapping.field}`)
-          } catch (error) {
-            console.error(`❌ Failed to auto-populate ${mapping.field}:`, error)
-            
-            // Try a direct API call as fallback
-            try {
-              console.log(`🔄 Trying fallback method for ${mapping.field}`)
-              const fallbackResponse = await apiClient.post('/interviews/response/', {
-                interview_id: currentInterview.value.id,
-                question_id: question.id,
-                answer: mapping.value
-              })
-              
-              // Update local state
-              const existingIndex = currentInterview.value.responses.findIndex(
-                r => r.question_id === question.id
-              )
-              
-              if (existingIndex !== -1) {
-                currentInterview.value.responses[existingIndex] = fallbackResponse.data
-              } else {
-                currentInterview.value.responses.push(fallbackResponse.data)
-              }
-              
-              console.log(`✅ Successfully auto-populated ${mapping.field} using fallback`)
-            } catch (fallbackError) {
-              console.error(`❌ Fallback also failed for ${mapping.field}:`, fallbackError)
-            }
-          }
-        }
-      }
-
-      // Refresh the current question after auto-population
-      setCurrentQuestion()
-      console.log('🔄 Current question after auto-population:', currentQuestion.value?.text)
-      
-    } catch (error) {
-      console.error('❌ Auto-population error:', error)
-    }
-  }
-
-  // Test function to manually trigger auto-population
-  const testAutoPopulation = async () => {
-    console.log('🧪 MANUAL TEST: Starting auto-population test')
-
-    if (!currentInterview.value) {
-      console.log('❌ No current interview for test')
-      return
-    }
-
-    // Get contact ID using the utility function
-    const contactId = getContactIdFromInterview(currentInterview.value)
-
-    if (!contactId) {
-      console.log('❌ No valid contact ID found for test')
-      return
-    }
-
-    // Get contact information
-    const { useContactsStore } = await import('./contacts')
-    const contactsStore = useContactsStore()
-    const contact = await contactsStore.getContactById(contactId)
-    
-    if (!contact) {
-      console.log('❌ No contact found for test')
-      return
-    }
-
-    console.log('🧪 Test contact:', contact.name)
-    console.log('🧪 Current question:', currentQuestion.value?.text)
-    
-    // Try to auto-populate the current question if it's a name question
-    if (currentQuestion.value && currentQuestion.value.text.toLowerCase().includes('name')) {
-      try {
-        console.log('🧪 Manually submitting response for current question')
-        await submitResponse(currentQuestion.value.id, contact.name)
-        console.log('🧪 Manual submission successful')
-        
-        // Refresh the current question
-        setCurrentQuestion()
-        console.log('🧪 Current question after refresh:', currentQuestion.value?.text)
-        console.log('🧪 Can go next after manual submission:', canGoNext.value)
-      } catch (error) {
-        console.error('🧪 Manual submission failed:', error)
-      }
-    } else {
-      console.log('🧪 Current question is not a name question')
-    }
-    
-    await autoPopulateContactInfo()
-    console.log('🧪 MANUAL TEST: Auto-population test complete')
-  }
 
   const canGoNext = computed(() => {
     if (!currentQuestion.value || !currentInterview.value) return false
@@ -728,6 +510,73 @@ export const useInterviewStore = defineStore('interview', () => {
     }
   }
 
+  // XForm handling methods
+  const submitXFormData = async (formData: any) => {
+    if (!currentInterview.value) {
+      throw new Error('No active interview')
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      console.log('📊 Submitting XForm data:', formData)
+
+      // Submit the complete XForm data to the backend
+      const response = await apiClient.post(`/interviews/${currentInterview.value.id}/xform-submit/`, {
+        form_data: formData,
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      })
+
+      // Update current interview status
+      currentInterview.value = response.data
+
+      console.log('✅ XForm submitted successfully')
+      return response.data
+
+    } catch (err: any) {
+      error.value = err.response?.data?.error || err.response?.data?.detail || 'Failed to submit XForm'
+      console.error('❌ XForm submission failed:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const saveXFormProgress = async (formData: any) => {
+    if (!currentInterview.value) {
+      throw new Error('No active interview')
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      console.log('💾 Saving XForm progress:', formData)
+
+      // Save progress to the backend
+      const response = await apiClient.patch(`/interviews/${currentInterview.value.id}/`, {
+        form_data: formData,
+        status: 'in_progress',
+        updated_at: new Date().toISOString()
+      })
+
+      // Update current interview
+      currentInterview.value = response.data
+
+      console.log('✅ XForm progress saved successfully')
+      return response.data
+
+    } catch (err: any) {
+      error.value = err.response?.data?.error || err.response?.data?.detail || 'Failed to save XForm progress'
+      console.error('❌ XForm progress save failed:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     currentInterview,
     interviews,
@@ -757,8 +606,8 @@ export const useInterviewStore = defineStore('interview', () => {
     getResponseForQuestion,
     setRoundFilter,
     importInterviewsFromJson,
-    autoPopulateContactInfo,
-    testAutoPopulation
+    submitXFormData,
+    saveXFormProgress
   }
 })
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 const props = defineProps({
   question: {
@@ -9,6 +9,10 @@ const props = defineProps({
   existingResponse: {
     type: Object,
     default: null
+  },
+  readonly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -18,6 +22,12 @@ const textAnswer = ref('')
 const multipleChoiceAnswer = ref('')
 const scaleAnswer = ref<number|null>(null)
 const booleanAnswer = ref<boolean|null>(null)
+
+// Computed properties
+
+const shouldUseInput = computed(() => {
+  return props.question.type === 'text' && props.readonly
+})
 
 // Initialize with existing response if available
 watch(() => props.existingResponse, (newVal) => {
@@ -67,11 +77,36 @@ const handleBooleanChange = () => {
     
     <!-- Text input -->
     <div v-if="question.type === 'text'" class="mt-4">
+
+      <!-- Use input for name questions or when readonly -->
+      <input
+        v-if="shouldUseInput"
+        v-model="textAnswer"
+        @input="handleTextChange"
+        type="text"
+        :readonly="readonly"
+        :disabled="readonly"
+        class="shadow-sm block w-full sm:text-sm border-gray-300 rounded-md"
+        :class="{
+          'bg-gray-50 text-gray-600 cursor-not-allowed': readonly,
+          'focus:ring-indigo-500 focus:border-indigo-500': !readonly
+        }"
+        :placeholder="question.placeholder || 'Enter your answer...'"
+      />
+
+      <!-- Use textarea for longer text questions -->
       <textarea
+        v-else
         v-model="textAnswer"
         @input="handleTextChange"
         rows="3"
-        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+        :readonly="readonly"
+        :disabled="readonly"
+        class="shadow-sm block w-full sm:text-sm border-gray-300 rounded-md"
+        :class="{
+          'bg-gray-50 text-gray-600 cursor-not-allowed': readonly,
+          'focus:ring-indigo-500 focus:border-indigo-500': !readonly
+        }"
         :placeholder="question.placeholder || 'Enter your answer...'"
       ></textarea>
     </div>

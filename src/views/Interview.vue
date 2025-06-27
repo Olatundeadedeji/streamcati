@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useInterviewStore } from '../stores/interview'
 import { useContactsStore } from '../stores/contacts'
 import { useToast } from '../composables/useToast'
-import QuestionRenderer from '../components/QuestionRenderer.vue'
+import XFormRenderer from '../components/XFormRenderer.vue'
+import type { XFormData } from '../services/xform'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,10 +20,17 @@ const contactId = computed(() => {
 const interviewId = computed(() => route.query.id ? Number(route.query.id) : null)
 const round = computed(() => route.query.round ? Number(route.query.round) : 1)
 const contact = ref<any>(null)
-const currentSection = ref<'introduction' | 'consent' | 'questions'>('introduction')
+const currentSection = ref<'introduction' | 'consent' | 'xform-questions'>('introduction')
 const consentGiven = ref(false)
 const isLoading = ref(true)
 const error = ref<Error | null>(null)
+
+// XForm configuration
+const xformPath = '/anbcbCFiqWx8KzoVT9Rurz.xml'
+const interviewerName = computed(() => {
+  // Get authenticated user's name - you may need to adjust this based on your auth system
+  return 'Current User' // TODO: Replace with actual authenticated user name
+})
 
 onMounted(async () => {
   isLoading.value = true
@@ -50,8 +58,8 @@ onMounted(async () => {
       await interviewStore.resumeInterview(interviewId.value)
       console.log('Interview resumed successfully')
       
-      // Set the current section to questions since we're resuming
-      currentSection.value = 'questions'
+      // Set the current section to XForm questions since we're resuming
+      currentSection.value = 'xform-questions'
     } else {
       console.log('Starting new interview for contact:', contactId.value, 'round:', round.value)
       await interviewStore.startInterview(contactId.value, round.value)
@@ -72,42 +80,9 @@ onMounted(async () => {
   }
 })
 
-// Test function for auto-population
-const runManualTest = async () => {
-  console.log('🧪 Testing auto-population functionality')
-  
-  try {
-    if (!interviewStore.currentInterview) {
-      console.log('❌ No current interview for auto-population test')
-      showToast('No active interview found', 'error')
-      return
-    }
-    
-    console.log('🧪 Current contact ID:', interviewStore.currentInterview.contact_id)
-    console.log('🧪 Available questions:', interviewStore.questions.length)
-    
-    // Trigger auto-population manually
-    await interviewStore.autoPopulateContactInfo()
-    
-    showToast('Auto-population test completed - check console for details', 'info')
-    console.log('✅ Auto-population test completed')
-    
-  } catch (error) {
-    console.error('❌ Auto-population test failed:', error)
-    showToast('Auto-population test failed - check console for details', 'error')
-  }
-}
 
-const handleResponse = async (answer: any) => {
-  if (!interviewStore.currentQuestion) return
-  
-  try {
-    await interviewStore.submitResponse(interviewStore.currentQuestion.id, answer)
-  } catch (error) {
-    console.error('Failed to submit response:', error)
-    showToast('Failed to submit response. Please try again.', 'error')
-  }
-}
+
+
 
 const handleNext = async () => {
   // If we're in the introduction section, move to consent
@@ -115,16 +90,16 @@ const handleNext = async () => {
     currentSection.value = 'consent'
     return
   }
-  
+
   // If we're in the consent section and consent is not given, show error
   if (currentSection.value === 'consent' && !consentGiven.value) {
     showToast('Consent is required to proceed.')
     return
   }
 
-  // Move to questions section if we're done with consent
+  // Move to XForm questions section if we're done with consent
   if (currentSection.value === 'consent') {
-    currentSection.value = 'questions'
+    currentSection.value = 'xform-questions'
     return
   }
 
@@ -141,14 +116,7 @@ const handleNext = async () => {
   }
 }
 
-const handlePrevious = async () => {
-  try {
-    await interviewStore.previousQuestion()
-  } catch (error) {
-    console.error('Failed to move to previous question:', error)
-    showToast('Failed to move to previous question', 'error')
-  }
-}
+
 
 const handlePause = async () => {
   try {
@@ -161,9 +129,46 @@ const handlePause = async () => {
   }
 }
 
-const canGoPrevious = computed(() => {
-  return (interviewStore.currentInterview?.current_question_index ?? 0) > 0
-})
+// XForm event handlers
+const handleXFormSubmit = async (formData: XFormData) => {
+  try {
+    console.log('📊 XForm submission data:', formData)
+
+    // Submit the complete form data to the backend
+    await interviewStore.submitXFormData(formData)
+
+    showToast('Interview completed successfully!', 'success')
+    router.push('/contacts')
+  } catch (error) {
+    console.error('❌ Failed to submit XForm:', error)
+    showToast('Failed to submit interview', 'error')
+  }
+}
+
+const handleXFormSave = async (formData: XFormData) => {
+  try {
+    console.log('💾 Saving XForm progress:', formData)
+
+    // Save progress to the backend
+    await interviewStore.saveXFormProgress(formData)
+
+    showToast('Progress saved successfully', 'success')
+  } catch (error) {
+    console.error('❌ Failed to save XForm progress:', error)
+    showToast('Failed to save progress', 'error')
+  }
+}
+
+const handleXFormError = (error: any) => {
+  console.error('❌ XForm error:', error)
+  showToast('Form error occurred', 'error')
+}
+
+const handleXFormLoaded = () => {
+  console.log('✅ XForm loaded successfully')
+}
+
+
 
 const getRoundLabel = computed(() => {
   switch (round.value) {
@@ -184,7 +189,7 @@ const showConsent = computed(() => {
 })
 
 const showQuestions = computed(() => {
-  return currentSection.value === 'questions'
+  return currentSection.value === 'xform-questions'
 })
 </script>
 
@@ -213,13 +218,7 @@ const showQuestions = computed(() => {
             Pause Interview
           </button>
           
-          <!-- Debug button for testing -->
-          <button 
-            @click="runManualTest" 
-            class="btn-secondary bg-purple-100 text-purple-800 hover:bg-purple-200"
-          >
-            Test Auto-Population
-          </button>
+
         </div>
       </div>
     </div>
@@ -285,68 +284,44 @@ const showQuestions = computed(() => {
       </div>
     </div>
 
-    <!-- Questions Section -->
-    <div v-else-if="showQuestions && interviewStore.currentQuestion" class="card p-6">
-      <div class="mb-4">
+    <!-- XForm Questions Section -->
+    <div v-else-if="showQuestions" class="card p-6">
+      <div class="mb-6">
         <div class="flex justify-between items-center">
-          <h2 class="text-xl font-semibold">Question {{ (interviewStore.currentInterview?.current_question_index ?? 0) + 1 }} of {{ interviewStore.stageQuestions.length }}</h2>
+          <h2 class="text-xl font-semibold">Interview Questions</h2>
           <div class="text-sm text-gray-500">
-            Progress: {{ interviewStore.progressPercentage }}%
+            {{ getRoundLabel }}
           </div>
         </div>
-        <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-          <div 
-            class="bg-indigo-600 h-2.5 rounded-full" 
-            :style="{ width: `${interviewStore.progressPercentage}%` }"
-          ></div>
-        </div>
-      </div>
-
-      <!-- Auto-populated message -->
-      <div v-if="interviewStore.currentQuestion && 
-                 interviewStore.getResponseForQuestion(interviewStore.currentQuestion.id)?.answer"
-           class="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
-        <p class="text-green-700">
-          This question has been automatically filled with information from your records.
-          You can proceed to the next question.
+        <p class="text-gray-600 mt-2">
+          Please complete all questions in the form below. Your progress will be saved automatically.
         </p>
       </div>
 
-      <QuestionRenderer
-        v-if="interviewStore.currentQuestion"
-        :question="interviewStore.currentQuestion"
-        :existing-response="interviewStore.getResponseForQuestion(interviewStore.currentQuestion.id)"
-        @response="handleResponse"
+      <!-- XForm Renderer -->
+      <XFormRenderer
+        :xml-path="xformPath"
+        :interviewer-name="interviewerName"
+        :instance-id="`interview_${interviewStore.currentInterview?.id || Date.now()}`"
+        @submit="handleXFormSubmit"
+        @save="handleXFormSave"
+        @error="handleXFormError"
+        @loaded="handleXFormLoaded"
       />
 
-      <!-- Navigation -->
-      <div class="flex justify-between mt-8 pt-6 border-t border-gray-200">
+      <!-- Pause Interview Button -->
+      <div class="mt-6 pt-6 border-t border-gray-200 flex justify-between">
         <button
-          @click="handlePrevious"
-          :disabled="!canGoPrevious"
-          class="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="handlePause"
+          class="btn-secondary"
         >
-          Previous
+          Pause Interview
         </button>
 
-        <button
-          @click="handleNext"
-          :disabled="!interviewStore.canGoNext"
-          class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {{ interviewStore.currentInterview?.current_question_index === interviewStore.stageQuestions.length - 1 
-              && interviewStore.currentStage === interviewStore.totalStages 
-              ? 'Complete Interview' : 'Next' }}
-        </button>
+        <div class="text-sm text-gray-500">
+          Interview will be saved automatically when you submit or pause.
+        </div>
       </div>
-    </div>
-
-    <!-- No Questions Available -->
-    <div v-else-if="showQuestions" class="card p-8 text-center">
-      <p class="text-gray-600">No questions available for this interview round.</p>
-      <button @click="router.push('/contacts')" class="btn-primary mt-4">
-        Return to Contacts
-      </button>
     </div>
   </div>
 </template>
