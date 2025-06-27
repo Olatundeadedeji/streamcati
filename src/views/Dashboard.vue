@@ -18,12 +18,7 @@ interface Stats {
   todayInterviews: number;
 }
 
-interface Activity {
-  id: number;
-  type: 'interview_completed' | 'interview_started' | 'contact_added';
-  contact: string;
-  time: string;
-}
+
 
 const stats = ref<Stats>({
   totalContacts: 0,
