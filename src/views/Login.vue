@@ -116,32 +116,7 @@ const fillDemoCredentials = (username: string, password: string) => {
           </button>
         </form>
 
-        <!-- Demo Credentials -->
-        <div class="mt-8 pt-6 border-t border-gray-200">
-          <h3 class="text-sm font-medium text-gray-700 mb-3">Demo Credentials:</h3>
-          <div class="space-y-2">
-            <div 
-              v-for="cred in demoCredentials" 
-              :key="cred.username"
-              class="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-              @click="fillDemoCredentials(cred.username, cred.password)"
-            >
-              <div>
-                <p class="text-sm font-medium text-gray-900">{{ cred.username }}</p>
-                <p class="text-xs text-gray-600">{{ cred.role }}</p>
-              </div>
-              <button 
-                type="button"
-                class="text-xs text-primary-600 hover:text-primary-800 font-medium"
-              >
-                Use
-              </button>
-            </div>
-          </div>
-          <p class="mt-3 text-xs text-gray-500">
-            Click on any credential to auto-fill the form
-          </p>
-        </div>
+      
       </div>
     </div>
   </div>
