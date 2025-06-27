@@ -32,11 +32,7 @@ const stats = ref<Stats>({
   todayInterviews: 0
 })
 
-const recentActivity = ref<Activity[]>([
-  { id: 1, type: 'interview_completed', contact: 'John Doe', time: '2 hours ago' },
-  { id: 2, type: 'interview_started', contact: 'Jane Smith', time: '4 hours ago' },
-  { id: 3, type: 'contact_added', contact: 'Bob Johnson', time: '6 hours ago' },
-])
+
 
 onMounted(async () => {
   try {
